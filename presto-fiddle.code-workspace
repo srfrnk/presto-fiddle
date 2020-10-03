@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"name": "ingest",
+			"path": "ingest"
+		},
+		{
+			"path": "presto"
+		}
+	],
+	"settings": {
+		"java.configuration.updateBuildConfiguration": "automatic"
+	}
+}

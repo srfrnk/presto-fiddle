@@ -1,0 +1,43 @@
+{
+    "namespace": "test",
+    "type": "record",
+    "name": "TaxiRide",
+    "fields": [
+        {
+            "name": "ride_id",
+            "type": "string"
+        },
+        {
+            "name": "point_idx",
+            "type": "int"
+        },
+        {
+            "name": "latitude",
+            "type": "double"
+        },
+        {
+            "name": "longitude",
+            "type": "double"
+        },
+        {
+            "name": "timestamp",
+            "type": "string"
+        },
+        {
+            "name": "meter_reading",
+            "type": "double"
+        },
+        {
+            "name": "meter_increment",
+            "type": "double"
+        },
+        {
+            "name": "ride_status",
+            "type": "string"
+        },
+        {
+            "name": "passenger_count",
+            "type": "int"
+        }
+    ]
+}
