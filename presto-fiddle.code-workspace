@@ -6,9 +6,22 @@
 		},
 		{
 			"path": "presto"
+		},
+		{
+			"path": "../beam"
 		}
 	],
 	"settings": {
-		"java.configuration.updateBuildConfiguration": "automatic"
+		"java.configuration.updateBuildConfiguration": "automatic",
+		"git.ignoreLimitWarning": true,
+		"java.project.referencedLibraries": {
+			"include": [
+				"lib/**/*.jar",
+				"/data/shahar/code/presto-fiddle/ingest/**/*.jar"
+			],
+			"exclude": [
+				"/ingest/build/libs/dependencies/*"
+			]
+		}
 	}
 }

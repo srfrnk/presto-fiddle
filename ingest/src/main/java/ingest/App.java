@@ -4,48 +4,49 @@
 package ingest;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import com.sun.jersey.core.impl.provider.entity.XMLRootObjectProvider.Text;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
 import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericData.Record;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.GenericRecordBuilder;
-import org.apache.avro.generic.GenericData.Record;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.Decoder;
 import org.apache.avro.io.DecoderFactory;
-import org.apache.avro.io.JsonDecoder;
-import org.apache.beam.model.pipeline.v1.RunnerApi.Trigger.AfterEndOfWindow;
 import org.apache.beam.runners.direct.DirectOptions;
+import org.apache.beam.runners.flink.FlinkPipelineOptions;
+import org.apache.beam.runners.spark.SparkPipelineOptions;
+import org.apache.beam.runners.spark.structuredstreaming.SparkStructuredStreamingRunner;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.AvroCoder;
+import org.apache.beam.sdk.io.Compression;
 import org.apache.beam.sdk.io.FileIO;
-import org.apache.beam.sdk.io.Read;
+import org.apache.beam.sdk.io.FileIO.Write.FileNaming;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.parquet.ParquetIO;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.Sample;
-import org.apache.beam.sdk.transforms.windowing.AfterAll;
-import org.apache.beam.sdk.transforms.windowing.AfterEach;
-import org.apache.beam.sdk.transforms.windowing.AfterPane;
-import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
+import org.apache.beam.sdk.transforms.WithTimestamps;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
-import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
-import org.apache.beam.sdk.transforms.windowing.Repeatedly;
+import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Duration;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class App {
     private static final Logger LOG = LoggerFactory.getLogger(App.class);
+    private static PipelineResult result;
 
     public static void main(final String[] args) {
         try {
@@ -57,29 +58,30 @@ public class App {
                     new String(App.class.getResourceAsStream("/outputSchema.json").readAllBytes(),
                             StandardCharsets.UTF_8));
 
-            final DirectOptions pipelineOptions = PipelineOptionsFactory.as(DirectOptions.class);
+            FlinkPipelineOptions pipelineOptions =
+                    PipelineOptionsFactory.as(FlinkPipelineOptions.class);
+
+            pipelineOptions.setFlinkMaster("local");
+
             final Pipeline p = Pipeline.create(pipelineOptions);
 
             PCollection<PubsubMessage> data = p.apply(PubsubIO.readMessages()
+            .asBatch(100,null)
                     .fromTopic("projects/pubsub-public-data/topics/taxirides-realtime"));
-            data = data
-                    .apply(Window.<PubsubMessage>into(FixedWindows.of(Duration.standardSeconds(60)))
-                            .withAllowedLateness(Duration.ZERO).discardingFiredPanes()
-                            .triggering(Repeatedly.forever(AfterPane.elementCountAtLeast(1000))));
+
+            // data = data.apply(WithTimestamps.of((PubsubMessage msg) -> Instant.now()));
+            data = data.apply(
+                    Window.<PubsubMessage>into(FixedWindows.of(Duration.standardSeconds(10))));
 
             data.apply(ParDo.of(new DoFn<PubsubMessage, GenericRecord>() {
                 private static final long serialVersionUID = -1L;
-                int cnt = 0;
 
                 @ProcessElement
                 public void processElement(@Element final PubsubMessage input,
                         final OutputReceiver<GenericRecord> output) {
                     final byte[] payload = input.getPayload();
                     final String message = new String(payload, StandardCharsets.UTF_8);
-                    cnt++;
-                    if (cnt > 1000) {
-                        System.exit(0);
-                    }
+                    // LOG.info(String.format("MSG: %s", message));
                     Decoder decoder;
                     try {
                         decoder = DecoderFactory.get().jsonDecoder(inputSchema, message);
@@ -108,11 +110,39 @@ public class App {
                             }
                             output.output(outputRecord);
                         }
-                    })).setCoder(AvroCoder.of(outputSchema))
-                    .apply(FileIO.<GenericRecord>write().via(ParquetIO.sink(outputSchema))
-                            .to("output/data.parquet").withNumShards(1));
+                    })).setCoder(AvroCoder.of(outputSchema)).apply(FileIO.<GenericRecord>write()
+                            .via(ParquetIO.sink(outputSchema)).withNaming(new FileNaming() {
+                                private static final long serialVersionUID = 1L;
 
-            p.run();
+                                @Override
+                                public String getFilename(BoundedWindow window, PaneInfo pane,
+                                        int numShards, int shardIndex, Compression compression) {
+                                    LOG.info(String.format("%s_%s_%d_%d_%s.parquet",
+                                            window.toString(), pane.toString(), numShards,
+                                            shardIndex, compression.toString()));
+                                    return String.format("%s_%s_%d_%d_%s.parquet",
+                                            window.toString(), pane.toString(), numShards,
+                                            shardIndex, compression.toString());
+                                }
+
+                            }).to("./output").withNumShards(1));
+
+            result = null;
+            Runtime.getRuntime().addShutdownHook(new Thread() {
+                @Override
+                public void run() {
+                    if (result != null) {
+                        try {
+                            result.cancel();
+                            result.waitUntilFinish();
+                        } catch (IOException e) {
+                            LOG.error("", e);
+                        }
+                    }
+                    LOG.info("Graceful exit");
+                }
+            });
+            result = p.run();
         } catch (final Exception e) {
             LOG.error("", e);
         }

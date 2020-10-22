@@ -2,8 +2,23 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "type": "shell",
+            "label": "launch",
+            "dependsOn": [
+                "clean",
+                "build_beam",
+            ],
+            "dependsOrder": "sequence"
+        },
+        {
+            "type": "shell",
             "label": "clean",
-            "command": "${command:workbench.action.terminal.clear}"
+            "command": "echo ${command:workbench.action.terminal.clear}"
+        },
+        {
+            "type": "shell",
+            "label": "build_beam",
+            "command": "../../beam/gradlew -p ../../beam/sdks/java/io/google-cloud-platform spotlessApply build -x test"
         }
     ]
 }

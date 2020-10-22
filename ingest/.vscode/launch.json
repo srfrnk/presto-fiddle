@@ -16,10 +16,16 @@
             "request": "launch",
             "mainClass": "ingest.App",
             "projectName": "ingest",
-            "preLaunchTask": "clean",
+            "preLaunchTask": "launch",
             "env": {
                 "GOOGLE_APPLICATION_CREDENTIALS": "srfrnk-test-6bce6970893d.json"
-            }
+            },
+            "classPaths": [
+                "build/classes/java/main",
+                "build/resources/main",
+                "build/libs/dependencies/*",
+                "../../beam/sdks/java/io/google-cloud-platform/build/libs/*"
+            ]
         }
     ]
 }

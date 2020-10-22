@@ -9,9 +9,10 @@
 plugins {
     // Apply the java plugin to add support for Java
     id 'java'
-
     // Apply the application plugin to add support for building an application
     id 'application'
+
+    // id 'com.github.johnrengelman.shadow' version '6.1.0'
 }
 
 repositories {
@@ -25,9 +26,30 @@ dependencies {
     implementation(group:'com.google.guava',name:'guava',version:'27.0.1-jre')
     implementation(group:'org.apache.beam',name:'beam-sdks-java-core',version:'2.24.0')
     implementation(group:'org.apache.beam',name:'beam-model-pipeline',version:'2.24.0')
-    implementation(group:'org.apache.beam',name:'beam-runners-direct-java',version:'2.24.0')
 
-    implementation(group:'org.apache.beam',name:'beam-sdks-java-io-google-cloud-platform',version:'2.24.0')
+    implementation(group:'org.apache.beam',name:'beam-runners-direct-java',version:'2.24.0')
+    implementation(group:'org.apache.beam',name:'beam-runners-spark',version:'2.24.0')
+    implementation(group:'org.apache.beam',name:'beam-runners-flink-1.10',version:'2.24.0')
+
+
+    implementation(group:'org.apache.spark',name:'spark-core_2.11',version:'2.4.7')
+    {
+        exclude group: 'org.slf4j'
+        exclude group: 'com.fasterxml.jackson.core'
+        exclude group: 'com.fasterxml.jackson.module'
+    }
+
+    implementation(group:'org.apache.spark',name:'spark-streaming_2.11',version:'2.4.7')
+    {
+        exclude group: 'org.slf4j'
+        exclude group: 'com.fasterxml.jackson.core'
+        exclude group: 'com.fasterxml.jackson.module'
+    }
+
+    // implementation(group:'org.apache.beam',name:'beam-sdks-java-io-google-cloud-platform',version:'2.24.0')
+
+    implementation files("../../beam/sdks/java/io/google-cloud-platform/build/libs/beam-sdks-java-io-google-cloud-platform-2.24.0-SNAPSHOT.jar")
+    runtime files("./build/libs/dependencies/*")
 
     implementation(group:'org.apache.beam',name:'beam-sdks-java-io-parquet',version:'2.24.0')
     implementation(group:'org.apache.avro',name:'avro',version:'1.10.0')
@@ -43,5 +65,22 @@ dependencies {
     testImplementation(group:'junit',name:'junit',version:'4.12')
 }
 
-// Define the main class for the application
-mainClassName = 'ingest.App'
+tasks.withType(JavaExec) {
+    environment = ['GOOGLE_APPLICATION_CREDENTIALS':'srfrnk-test-6bce6970893d.json']
+}
+
+// shadowJar {
+//   zip64 true
+//   classifier = null
+// }
+
+// build {
+    // dependsOn shadowJar
+// }
+
+mainClassName='ingest.App'
+
+task copyDependencies(type: Copy) {
+  from configurations.default
+  into './build/libs/dependencies'
+}

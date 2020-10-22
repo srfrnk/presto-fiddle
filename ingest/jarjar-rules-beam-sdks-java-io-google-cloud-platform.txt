@@ -1,0 +1,1 @@
+zap org.apache.beam.sdk.io.gcp.**
