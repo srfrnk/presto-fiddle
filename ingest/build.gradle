@@ -67,6 +67,7 @@ dependencies {
 
 tasks.withType(JavaExec) {
     environment = ['GOOGLE_APPLICATION_CREDENTIALS':'srfrnk-test-6bce6970893d.json']
+    jvmArgs = ['-Xms1g', '-Xmx15g']
 }
 
 // shadowJar {
