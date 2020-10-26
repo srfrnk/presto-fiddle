@@ -7,21 +7,19 @@
 		{
 			"path": "presto"
 		},
-		{
+		/* {
 			"path": "../beam"
-		}
+		}, */
+		/*{
+			"path": "../parquet-mr"
+		}*/
 	],
 	"settings": {
 		"java.configuration.updateBuildConfiguration": "automatic",
 		"git.ignoreLimitWarning": true,
 		"java.project.referencedLibraries": {
-			"include": [
-				"lib/**/*.jar",
-				"/data/shahar/code/presto-fiddle/ingest/**/*.jar"
-			],
-			"exclude": [
-				"/ingest/build/libs/dependencies/*"
-			]
+			"include": [],
+			"exclude": []
 		}
 	}
 }

@@ -63,6 +63,8 @@ public class App {
                     .fromTopic("projects/pubsub-public-data/topics/taxirides-realtime"));
 
             Map<String, String> configuration=new HashMap<>();
+            configuration.put("parquet.block.size","134217728");
+            configuration.put("parquet.page.size","1048576");
             Sink sink = ParquetIO.sink(outputSchema).withConfiguration(configuration);
 
             data.apply(ParDo.of(new DoFn<PubsubMessage, GenericRecord>() {
