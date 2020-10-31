@@ -17,6 +17,7 @@ import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.Decoder;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.beam.runners.flink.FlinkPipelineOptions;
+import org.apache.beam.runners.flink.FlinkRunner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.AvroCoder;
@@ -34,7 +35,6 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.values.PCollection;
-import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,22 +52,23 @@ public class App {
                     new String(App.class.getResourceAsStream("/outputSchema.json").readAllBytes(),
                             StandardCharsets.UTF_8));
 
+
             FlinkPipelineOptions pipelineOptions =
                     PipelineOptionsFactory.as(FlinkPipelineOptions.class);
-
-            pipelineOptions.setFlinkMaster("local");
+            pipelineOptions.setRunner(FlinkRunner.class);
+            pipelineOptions.setFlinkMaster("[local]");
 
             final Pipeline p = Pipeline.create(pipelineOptions);
 
-            PCollection<PubsubMessage> data = p.apply(PubsubIO.readMessages().asBatch(10000, null)
+            PCollection<PubsubMessage> data = p.apply(PubsubIO.readMessages().asBatch(100, null)
                     .fromTopic("projects/pubsub-public-data/topics/taxirides-realtime"));
 
-            Map<String, String> configuration=new HashMap<>();
-            configuration.put("parquet.block.size","134217728");
-            configuration.put("parquet.page.size","1048576");
+            Map<String, String> configuration = new HashMap<>();
+            configuration.put("parquet.block.size", "134217728");
+            configuration.put("parquet.page.size", "1048576");
             Sink sink = ParquetIO.sink(outputSchema).withConfiguration(configuration);
 
-            data.apply(ParDo.of(new DoFn<PubsubMessage, GenericRecord>() {
+            data.apply("proc msg", ParDo.of(new DoFn<PubsubMessage, GenericRecord>() {
                 private static final long serialVersionUID = -1L;
 
                 @ProcessElement
@@ -115,10 +116,10 @@ public class App {
                                 @Override
                                 public String getFilename(BoundedWindow window, PaneInfo pane,
                                         int numShards, int shardIndex, Compression compression) {
-                                    return String.format("ride_status=%s/%s.parquet",
-                                            shard.rideStatus, shard.date);
+                                    return String.format("ride_status=%s/%s_%d.parquet",
+                                            shard.rideStatus, shard.date, shardIndex);
                                 }
-                            })).withNumShards(1).to("./output").withTempDirectory("./tmp"));
+                            })).to("./output").withTempDirectory("./tmp"));
 
             result = null;
             Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -136,6 +137,8 @@ public class App {
                 }
             });
             result = p.run();
+            LOG.info("Got result");
+            result.waitUntilFinish();
         } catch (final Exception e) {
             LOG.error("", e);
         }

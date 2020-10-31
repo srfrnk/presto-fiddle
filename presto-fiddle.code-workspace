@@ -7,12 +7,12 @@
 		{
 			"path": "presto"
 		},
-		/* {
-			"path": "../beam"
-		}, */
-		/*{
-			"path": "../parquet-mr"
-		}*/
+		// {
+		// "path": "../beam"
+		// },
+		// {
+		// "path": "../parquet-mr"
+		// }
 	],
 	"settings": {
 		"java.configuration.updateBuildConfiguration": "automatic",

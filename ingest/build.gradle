@@ -25,11 +25,21 @@ dependencies {
     // This dependency is found on compile classpath of this component and consumers.
     implementation(group:'com.google.guava',name:'guava',version:'27.0.1-jre')
     implementation(group:'org.apache.beam',name:'beam-sdks-java-core',version:'2.24.0')
-    implementation(group:'org.apache.beam',name:'beam-model-pipeline',version:'2.24.0')
+    {
+        exclude group: 'org.slf4j'
+    }
 
-    implementation(group:'org.apache.beam',name:'beam-runners-direct-java',version:'2.24.0')
-    implementation(group:'org.apache.beam',name:'beam-runners-spark',version:'2.24.0')
+    implementation(group:'org.apache.beam',name:'beam-model-pipeline',version:'2.24.0')
+    {
+        exclude group: 'org.slf4j'
+    }
+
+    // implementation(group:'org.apache.beam',name:'beam-runners-direct-java',version:'2.24.0')
+    // implementation(group:'org.apache.beam',name:'beam-runners-spark',version:'2.24.0')
     implementation(group:'org.apache.beam',name:'beam-runners-flink-1.10',version:'2.24.0')
+    {
+        exclude group: 'org.slf4j'
+    }
 
 
     implementation(group:'org.apache.spark',name:'spark-core_2.11',version:'2.4.7')
@@ -52,7 +62,15 @@ dependencies {
     runtime files("./build/libs/dependencies/*")
 
     implementation(group:'org.apache.beam',name:'beam-sdks-java-io-parquet',version:'2.24.0')
+    {
+        exclude group: 'org.slf4j'
+    }
+
     implementation(group:'org.apache.avro',name:'avro',version:'1.10.0')
+    {
+        exclude group: 'org.slf4j'
+    }
+
     implementation(group:'org.apache.hadoop',name:'hadoop-common',version:'3.3.0')
     {
         exclude group: 'org.slf4j'
