@@ -20,3 +20,5 @@ hadoop-load-data:
 hive-create-table:
 	docker-compose exec hive-server bash -c "/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -f /data/create-hive-schema.sql"
 
+presto-query:
+	docker-compose exec presto-coordinator bash -c 'presto --execute "select count(*) from hive.default.parquet_test;"'
